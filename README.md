@@ -57,50 +57,46 @@
      on, and if you don't decide it here you'll discover it as a crash in
      Milestone 5. -->
 
+
+
+
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Searches the listings file for items matching a description, optional size, and optional price ceiling.
+- **Inputs:** `description` (str), `size` (str, optional), `max_price` (float, optional)
+- **Returns:** A list of listing dicts, each with id, title, description, category, style_tags, size, condition, price, colors, brand, platform.
+- **When it has nothing:** An empty list `[]` (never None).
+
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Takes one listing and the user's wardrobe and suggests outfits pairing them.
+- **Inputs:** `new_item` (dict, one listing), `wardrobe` (dict, the wardrobe data)
+- **Returns:** A string of outfit ideas that name specific wardrobe items.
+- **When it has nothing:** If the wardrobe is empty, returns a string of general styling advice for the item instead of failing.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Writes a short social-media-style caption for the item and outfit.
+- **Inputs:** `outfit` (str, from suggest_outfit), `new_item` (dict, one listing)
+- **Returns:** A caption string, a few sentences at most.
+- **When it has nothing:** If the model call fails, returns an error message string and does not raise.
+
+
 
 ---
 
 ## Planning Loop
 
-<!-- Your branch rule, stated as a rule — the condition AND both paths — plus
-     the file and function that holds it.
-
-     Like this:
-       "If search_listings returns an empty list, put a message in the session
-        and stop. Otherwise take the first result and go to suggest_outfit."
-        — agent.py::run_agent
-
-     The grader checks your code against what you claim here, so the file and
-     function have to be real. -->
+**Branch rule:** If search_listings returns an empty list, put a message in session["error"] naming what to change (price, size, or description) and stop with session["fit_card"] still None. Otherwise, store the first result in session["selected_item"] and go to suggest_outfit, then create_fit_card.
 
 **Branch rule:**
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** Regex. A pattern pulls the price ceiling from phrases like "under $30" or "below 30", and another pulls the size from phrases like "size M" or "in size 8". Whatever text is left becomes the `description`. If no price or size is found, those inputs are passed as None.
 
-**What moves through the session:** <!-- which fields, in what order -->
-
+**What moves through the session:** `query` (the raw text), then `search_results` (list from search_listings), then `selected_item` (the first result), then `outfit` (string from suggest_outfit), then `fit_card` (string from create_fit_card). `error` holds the message if the search comes back empty, and `fit_card` stays None in that case.
 ---
 
 ## Sample Run
