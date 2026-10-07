@@ -39,8 +39,7 @@
 
 ## What This Does
 
-<!-- Three or four sentences: what a user asks for, and what they get back. -->
-
+A user types what they want in plain language, like "vintage graphic tee under $30". FitFindr searches a file of 40 thrift listings, picks the best match, suggests outfits pairing it with the user's wardrobe (or general styling advice if the wardrobe is empty), and writes a short social-media caption for the find. If nothing matches, it stops and tells the user what to change instead of continuing.
 
 
 ---
@@ -66,6 +65,7 @@
 - **Inputs:** `description` (str), `size` (str, optional), `max_price` (float, optional)
 - **Returns:** A list of listing dicts, each with id, title, description, category, style_tags, size, condition, price, colors, brand, platform.
 - **When it has nothing:** An empty list `[]` (never None).
+- Size matching: every token of the requested size must appear as a whole token in the listing's size, so 'M' matches 'S/M' and 'M/L' but not 'XL'. Price is inclusive. Returns up to 10 results, best keyword match first."
 
 
 ### `suggest_outfit`
@@ -73,14 +73,14 @@
 - **What it does:** Takes one listing and the user's wardrobe and suggests outfits pairing them.
 - **Inputs:** `new_item` (dict, one listing), `wardrobe` (dict, the wardrobe data)
 - **Returns:** A string of outfit ideas that name specific wardrobe items.
-- **When it has nothing:** If the wardrobe is empty, returns a string of general styling advice for the item instead of failing.
+- **When it has nothing:** If the wardrobe is empty, returns a string of general styling advice for the item instead of failing. If the model can't be reached, raises ModelUnavailable
 
 ### `create_fit_card`
 
 - **What it does:** Writes a short social-media-style caption for the item and outfit.
 - **Inputs:** `outfit` (str, from suggest_outfit), `new_item` (dict, one listing)
 - **Returns:** A caption string, a few sentences at most.
-- **When it has nothing:** If the model call fails, returns an error message string and does not raise.
+- **When it has nothing:** If outfit is empty or whitespace, returns a descriptive message string instead of raising. If the model can't be reached, generate() raises ModelUnavailable (
 
 
 
@@ -115,19 +115,30 @@ $ python app.py ask '...'
 
 **The three tools, tested one at a time**
 
+**The three tools, tested one at a time**
+
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
+[{'id': 'lst_002', 'title': 'Y2K Baby Tee — Butterfly Print', 'size': 'S/M', 'price': 18.0, 'platform': 'depop', ...}, {'id': 'lst_006', 'title': 'Graphic Tee — 2003 Tour Bootleg Style', 'size': 'L', 'price': 24.0, 'platform': 'depop', ...}, ...]
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
-
+$ python -c "from tools import search_listings; print(search_listings('designer ballgown', size='XXS', max_price=5))"
+[]
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+**Outfit 1: Casual Streetwear**
+Pair the vintage Levi's with the **white ribbed tank top**, layered under the **oversized grey crewneck sweatshirt**, and finish with the **chunky white sneakers**.
 
+**Outfit 2: Edge & Denim**
+Tuck the **white ribbed tank top** into the Levi's, add the **brown leather belt**, and layer the **vintage black denim jacket** on top with the **black combat boots**.
+```
+
+```
+$ AI201_CACHE=0 python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
+Scored these vintage Levi's 501s on Depop for just $38 and I am never taking them off. They have that 90s slouchy, broken-in feel that takes years to get naturally. Just gonna live in these and my beat-up white sneakers all autumn.
 ```
 
 ---
