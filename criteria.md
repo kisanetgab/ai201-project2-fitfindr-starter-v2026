@@ -25,9 +25,13 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-<!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
-     "my search is a plain keyword match and some phrasings will miss" is a
-     real answer. -->
+My query parser is a regex, so it only catches the phrasings I planned for, and
+the sizes in the data are messy strings like "S/M" and "W30 L30" that a simple
+match can miss. Two of the three steps also call the model, which can fail or
+rate-limit. So 5 of 5 would be unrealistic. I set 4 of 5 because I expect
+occasional misses from phrasing or the model, but more than one miss would mean
+a real bug.
+
 
 ---
 
@@ -37,65 +41,43 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
-     about this path? -->
+This path has no model call in it. The branch only checks whether
+`search_listings` returned an empty list, which is plain code that behaves the
+same every time. Criterion 1 depends on regex phrasing and model output, but
+this one doesn't, so any miss would be a bug in my branch and not randomness.
+That's why I can hold it to 5 of 5.
 
 ---
 
 ## 3. Something about state
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know that the item your search found is the same item the
-     next tool received? Name something countable or observable.
-
-     This is the criterion people find hardest, because state failure doesn't
-     look like state failure — it looks like a tool problem. Something that
-     compares session["selected_item"] against what actually reached
-     suggest_outfit is the shape you're after. -->
+In a matching run, the id of session["selected_item"] is the same id as the item that suggest_outfit received (checked by printing both) in 5 of 5 tries.
 
 
-
-**Why this target:**
-
-
+**Why this target:**: The handoff goes through session["selected_item"] with no model involved, so the same code runs every time. Any miss would mean a real bug, not randomness, so I set it at 5 of 5.
 
 ---
 
 ## 4. Something about the fit card
 
-<!-- YOU WRITE THIS ONE.
-
-     The fit card calls a model, so the same input can produce different words
-     each time. That's not a bug — it's the nature of the tool. So what would
-     make it acceptable?
-
-     Think about what you'd actually be unhappy to see. A caption that never
-     mentions the price? Two different items producing the same opening
-     sentence? A card longer than a caption anyone would post? Any of those can
-     be turned into a number. -->
-
+Every fit card is non-empty, is 3 sentences or fewer, names the item (title or type), and contains no "None" or blank brand, in at least 4 of 5 tries.
 
 
 **Why this target:**
-
+The model varies its wording (TEMPERATURE is 0.9), so I can't demand identical text. I check observable traits instead. 4 of 5 because some listings have a null brand, which can leak into the caption.
 
 
 ---
 
 ## 5. Your choice
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. Speed, the empty
-     wardrobe path, what happens when the model can't be reached, whether the
-     search respects a price ceiling — anything, as long as it names a number
-     or an observable outcome. -->
+Given a query that matches a listing and an empty wardrobe, the run ends with session["error"] equal to None, and both session["outfit_suggestion"] and session["fit_card"] are non-empty strings, in at least 4 of 5 tries.
 
 
 
 **Why this target:**
 
+suggest_outfit and create_fit_card both call the model, so some variation is expected and I allow one miss in five. The empty-wardrobe path has to return general advice instead of crashing, and that part is code I control
 
 
 ---
