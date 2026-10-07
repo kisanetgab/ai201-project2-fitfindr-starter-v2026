@@ -108,14 +108,28 @@ A user types what they want in plain language, like "vintage graphic tee under $
 
 **One full query**
 
-```
-$ python app.py ask '...'
+**One full query**
 
+```
+$ python app.py ask 'vintage graphic tee under $30'
+Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+Outfit:   **Outfit 1: Casual Y2K Streetwear**
+Pair the butterfly baby tee with the **baggy straight-leg jeans**, **chunky white sneakers**, and the **black cropped zip hoodie** worn open.
+
+**Outfit 2: Contrast Mix**
+Pair the baby tee with the **wide-leg khaki trousers**, **brown leather belt**, and **black combat boots** for a grunge-meets-sweet look.
+
+Fit card: Scored this literal holy grail butterfly baby tee on depop for only $18 and I am never taking it off. Thinking baggy straight-leg jeans and chunky white sneakers for the ultimate casual Y2K streetwear vibe, but it'll also look so good with combat boots for something a little more grunge.
+```
+
+```
+$ python app.py ask 'designer ballgown size XXS under $5'
+No listings matched 'designer ballgown'. Try to raise the price limit above $5, or drop the size (XXS), or use fewer or broader description words.
 ```
 
 **The three tools, tested one at a time**
 
-**The three tools, tested one at a time**
 
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
@@ -154,15 +168,15 @@ Scored these vintage Levi's 501s on Depop for just $38 and I am never taking the
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+Asked: a Tool Inventory draft for the three tools. 
+Came back: it said create_fit_card returns an error string when the model fails. 
+Changed: after reading generate.py, which raises ModelUnavailable, I rewrote that line of the spec.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+Asked: an implementation of search_listings. 
+Came back: it worked, but description text counted toward the score, so a sweatshirt saying "No graphics" showed up for "graphic tee". 
+Changed: I noted it as a known limit in my README (or fixed it by dropping description from the match).
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
