@@ -96,8 +96,8 @@
 
 **How the query is parsed:** Regex. A pattern pulls the price ceiling from phrases like "under $30" or "below 30", and another pulls the size from phrases like "size M" or "in size 8". Whatever text is left becomes the `description`. If no price or size is found, those inputs are passed as None.
 
-**What moves through the session:** `query` (the raw text), then `search_results` (list from search_listings), then `selected_item` (the first result), then `outfit` (string from suggest_outfit), then `fit_card` (string from create_fit_card). `error` holds the message if the search comes back empty, and `fit_card` stays None in that case.
----
+**What moves through the session:** 
+`query` (raw text), then `parsed` (dict with description, size, max_price from the regex), then `search_results` (list from search_listings), then `selected_item` (the first result), then `outfit_suggestion` (string from suggest_outfit), then `fit_card` (string from create_fit_card). `wardrobe` is set at the start and read by suggest_outfit. `error` holds the message if the search comes back empty, and `fit_card` stays None in that case.---
 
 ## Sample Run
 
