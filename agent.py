@@ -5,7 +5,7 @@ The FitFindr planning loop.
 """
 
 import re
-
+from mcp_client import call_tool, MCPError
 import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
@@ -68,11 +68,26 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     session["parsed"] = _parse_query(query)
     p = session["parsed"]
 
+    # Tool 1, now called through MCP
     count += 1
     trace.check_iterations(count)
-    session["search_results"] = search_listings(
-        p["description"], size=p["size"], max_price=p["max_price"]
-    )
+    try:
+        session["search_results"] = call_tool("search_listings", {
+            "description": p["description"],
+            "size": p["size"],
+            "max_price": p["max_price"],
+        })
+    except MCPError as exc:
+        session["error"] = (
+            "The search tool couldn't be reached over MCP, so nothing was "
+            "searched. Try again; if it keeps happening, run "
+            f"`python mcp_server.py` on its own to see the error. ({exc})"
+        )
+        trace.step("search_listings (via MCP)", inputs=p, returned="ERROR",
+                   note="MCP call failed, stopping")
+        return session
+    trace.step("search_listings (via MCP)", inputs=p,
+               returned=session["search_results"])
 
     # THE BRANCH: nothing found -> stop before suggest_outfit
     if not session["search_results"]:
@@ -86,21 +101,36 @@ def run_agent(query: str, wardrobe: dict) -> dict:
             f"No listings matched '{p['description']}'. Try to "
             + ", or ".join(tips) + "."
         )
+        trace.step("branch", note="empty search, stopping before suggest_outfit")
         return session
 
     session["selected_item"] = session["search_results"][0]
+    item = session["selected_item"]
 
-    count += 1
-    trace.check_iterations(count)
-    session["outfit_suggestion"] = suggest_outfit(
-        session["selected_item"], session["wardrobe"]
-    )
+    try:
+        count += 1
+        trace.check_iterations(count)
+        session["outfit_input_id"] = item["id"]  # id actually handed to the tool
+        session["outfit_suggestion"] = suggest_outfit(item, session["wardrobe"])
+        trace.step(
+            "suggest_outfit",
+            inputs={"item_id": item["id"],
+                    "wardrobe_items": len((session["wardrobe"] or {}).get("items", []))},
+            returned=session["outfit_suggestion"],
+        )
 
-    count += 1
-    trace.check_iterations(count)
-    session["fit_card"] = create_fit_card(
-        session["outfit_suggestion"], session["selected_item"]
-    )
+        count += 1
+        trace.check_iterations(count)
+        session["fit_card"] = create_fit_card(session["outfit_suggestion"], item)
+        trace.step("create_fit_card", inputs={"item_id": item["id"]},
+                   returned=session["fit_card"])
+    except (ModelUnavailable, RuntimeError) as exc:
+        session["error"] = (
+            "The model couldn't be reached, so no outfit or fit card was made. "
+            "Check GEMINI_API_KEY in your .env file, or wait a minute if you've "
+            f"been running many queries, then try again. ({exc})"
+        )
+        trace.step("model call", returned="ERROR", note="model unavailable, stopping")
     return session
 
 
