@@ -74,7 +74,7 @@ def search_listings(
             item["brand"] or "",
         ]))
         score = len(query & haystack)
-        if score > 0:
+        if query and query <= haystack:
             scored.append((score, item))
     scored.sort(key=lambda pair: pair[0], reverse=True)
     return [item for _, item in scored][: config.SEARCH_RESULT_LIMIT]
