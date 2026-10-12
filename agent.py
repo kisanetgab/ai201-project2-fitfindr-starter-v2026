@@ -112,12 +112,13 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         trace.check_iterations(count)
         session["outfit_input_id"] = item["id"]  # id actually handed to the tool
         session["outfit_suggestion"] = suggest_outfit(item, session["wardrobe"])
-        trace.step(
-            "suggest_outfit",
-            inputs={"item_id": item["id"],
-                    "wardrobe_items": len((session["wardrobe"] or {}).get("items", []))},
-            returned=session["outfit_suggestion"],
-        )
+            trace.step(
+                "suggest_outfit",
+                inputs={"item_id": item["id"],
+                        "wardrobe_items": len((session["wardrobe"] or {}).get("items", []))},
+                returned=session["outfit_suggestion"],
+                note=f"received item {item['id']} (selected_item is {session['selected_item']['id']})",
+                )
 
         count += 1
         trace.check_iterations(count)
