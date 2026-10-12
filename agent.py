@@ -5,9 +5,10 @@ The FitFindr planning loop.
 """
 
 import re
-from mcp_client import call_tool, MCPError
+
 import config
 import trace
+from mcp_client import call_tool, MCPError
 from tools import search_listings, suggest_outfit, create_fit_card
 from generate import ModelUnavailable
 
@@ -112,13 +113,13 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         trace.check_iterations(count)
         session["outfit_input_id"] = item["id"]  # id actually handed to the tool
         session["outfit_suggestion"] = suggest_outfit(item, session["wardrobe"])
-            trace.step(
-                "suggest_outfit",
-                inputs={"item_id": item["id"],
-                        "wardrobe_items": len((session["wardrobe"] or {}).get("items", []))},
-                returned=session["outfit_suggestion"],
-                note=f"received item {item['id']} (selected_item is {session['selected_item']['id']})",
-                )
+        trace.step(
+            "suggest_outfit",
+            inputs={"item_id": item["id"],
+                    "wardrobe_items": len((session["wardrobe"] or {}).get("items", []))},
+            returned=session["outfit_suggestion"],
+            note=f"received item {item['id']} (selected_item is {session['selected_item']['id']})",
+        )
 
         count += 1
         trace.check_iterations(count)
