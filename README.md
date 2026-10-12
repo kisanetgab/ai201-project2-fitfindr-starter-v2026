@@ -1,112 +1,55 @@
 # FitFindr
 
-> ### 👋 Start here
->
-> **New to this repo? Read [RUNNING.md](RUNNING.md) first** — setup, every
-> command, and what to do when something breaks.
->
-> Once `python test.py` passes:
->
-> ```bash
-> python app.py listings --full -n 6      # read the data (Milestone 1)
-> python app.py fields                    # what you can filter on
-> python app.py ask 'vintage graphic tee under $30'
-> ```
->
-> All three tools are stubs, so that last command will do nothing useful yet.
-> That's the starting position.
->
-> **The rest of this file is your submission.** Fill it in as you go.
+How to run: see [RUNNING.md](RUNNING.md).
 
 ---
-
-<!-- ─────────────────────────────────────────────────────────────────────────
-     HOW TO USE THIS FILE
-
-     This is your submission. Fill each section in as you finish the milestone
-     it belongs to — don't leave it all to the end.
-
-     Unit 3 asks for the first five sections. Unit 4 adds the five below them.
-     Leave the unit 4 sections alone until then; they're here so you know
-     what's coming.
-
-     Everything is pasted as TEXT. No screenshots, no images, no video links.
-     A typed block of output gets full credit; a picture of the same output
-     gets none.
-     ───────────────────────────────────────────────────────────────────────── -->
-
-<!-- ═══════════════════════ UNIT 3 — THE BUILD ═══════════════════════ -->
 
 ## What This Does
 
 A user types what they want in plain language, like "vintage graphic tee under $30". FitFindr searches a file of 40 thrift listings, picks the best match, suggests outfits pairing it with the user's wardrobe (or general styling advice if the wardrobe is empty), and writes a short social-media caption for the find. If nothing matches, it stops and tells the user what to change instead of continuing.
 
-
 ---
 
 ## Tool Inventory
 
-<!-- Four lines per tool. This is worth 2 points and it's the single most
-     common place students lose them.
-
-     "Returns a list" earns NOTHING. The description has to say what is IN
-     the list.
-
-     The empty case isn't optional either — it's the thing your loop branches
-     on, and if you don't decide it here you'll discover it as a crash in
-     Milestone 5. -->
-
-
-
-
 ### `search_listings`
 
-- **What it does:** Searches the listings file for items matching a description, optional size, and optional price ceiling.
-- **Inputs:** `description` (str), `size` (str, optional), `max_price` (float, optional)
-- **Returns:** A list of listing dicts, each with id, title, description, category, style_tags, size, condition, price, colors, brand, platform.
+- **What it does:** Searches the listings file for items matching a description, an optional size, and an optional price ceiling.
+- **Inputs:** `description` (str), `size` (str, optional), `max_price` (float, optional, in whole US dollars, inclusive)
+- **Returns:** A list of up to 10 listing dicts, best keyword match first, each with id, title, description, category, style_tags, size, condition, price, colors, brand (str or None), platform.
 - **When it has nothing:** An empty list `[]` (never None).
-- Size matching: every token of the requested size must appear as a whole token in the listing's size, so 'M' matches 'S/M' and 'M/L' but not 'XL'. Price is inclusive. Returns up to 10 results, best keyword match first."
-
+- **Size matching:** every token of the requested size must appear as a whole token in the listing's size, so "M" matches "S/M" and "M/L" but not "XL".
+- **Match rule:** In Unit 3 any one query word matching scored a result. Since the Unit 4 improvement, every query word must appear in the listing's title, description, category, style tags, colors or brand.
 
 ### `suggest_outfit`
 
-- **What it does:** Takes one listing and the user's wardrobe and suggests outfits pairing them.
-- **Inputs:** `new_item` (dict, one listing), `wardrobe` (dict, the wardrobe data)
+- **What it does:** Takes one listing and the user's wardrobe and suggests one or two outfits pairing them.
+- **Inputs:** `new_item` (dict, one listing), `wardrobe` (dict with an `items` list)
 - **Returns:** A string of outfit ideas that name specific wardrobe items.
-- **When it has nothing:** If the wardrobe is empty, returns a string of general styling advice for the item instead of failing. If the model can't be reached, raises ModelUnavailable
+- **When it has nothing:** If the wardrobe is empty, returns a string of general styling advice for the item instead of failing. If the model can't be reached, `generate()` raises `ModelUnavailable`, which `run_agent` catches.
 
 ### `create_fit_card`
 
 - **What it does:** Writes a short social-media-style caption for the item and outfit.
 - **Inputs:** `outfit` (str, from suggest_outfit), `new_item` (dict, one listing)
-- **Returns:** A caption string, a few sentences at most.
-- **When it has nothing:** If outfit is empty or whitespace, returns a descriptive message string instead of raising. If the model can't be reached, generate() raises ModelUnavailable (
-
-
+- **Returns:** A caption string of two to four sentences that mentions the item, price and platform.
+- **When it has nothing:** If `outfit` is empty or whitespace, returns a descriptive message string instead of raising. If the model can't be reached, `generate()` raises `ModelUnavailable`, which `run_agent` catches.
 
 ---
 
 ## Planning Loop
 
-**Branch rule:** If search_listings returns an empty list, put a message in session["error"] naming what to change (price, size, or description) and stop with session["fit_card"] still None. Otherwise, store the first result in session["selected_item"] and go to suggest_outfit, then create_fit_card.
-
-**Branch rule:**
+**Branch rule:** If `search_listings` returns an empty list, put a message in `session["error"]` naming what to change (price, size, or description) and stop with `session["fit_card"]` still None. Otherwise, store the first result in `session["selected_item"]` and go to `suggest_outfit`, then `create_fit_card`.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** Regex. A pattern pulls the price ceiling from phrases like "under $30" or "below 30", and another pulls the size from phrases like "size M" or "in size 8". Whatever text is left becomes the `description`. If no price or size is found, those inputs are passed as None.
+**How the query is parsed:** Regex. One pattern pulls the price ceiling from phrases like "under $30" or "below 30", and another pulls the size from phrases like "size M" or "in size 8". Whatever text is left becomes the `description`. If no price or size is found, those inputs are passed as None.
 
-**What moves through the session:** 
-`query` (raw text), then `parsed` (dict with description, size, max_price from the regex), then `search_results` (list from search_listings), then `selected_item` (the first result), then `outfit_suggestion` (string from suggest_outfit), then `fit_card` (string from create_fit_card). `wardrobe` is set at the start and read by suggest_outfit. `error` holds the message if the search comes back empty, and `fit_card` stays None in that case.---
+**What moves through the session:** `query` (raw text), then `parsed` (dict with description, size, max_price), then `search_results` (list from `search_listings`, called through MCP), then `selected_item` (the first result), then `outfit_input_id` (the item id handed to `suggest_outfit`), then `outfit_suggestion` (string from `suggest_outfit`), then `fit_card` (string from `create_fit_card`). `wardrobe` is set at the start and read by `suggest_outfit`. `error` holds the message if the run ended early, and `fit_card` stays None in that case.
+
+---
 
 ## Sample Run
-
-<!-- Two things go here.
-
-     1. One FULL query and its output, pasted as text.
-     2. Your three per-tool terminal tests — the command and what it printed. -->
-
-**One full query**
 
 **One full query**
 
@@ -128,8 +71,15 @@ $ python app.py ask 'designer ballgown size XXS under $5'
 No listings matched 'designer ballgown'. Try to raise the price limit above $5, or drop the size (XXS), or use fewer or broader description words.
 ```
 
-**The three tools, tested one at a time**
+Session state check:
 
+```
+$ python -c "from agent import run_agent; from utils.data_loader import get_example_wardrobe; s = run_agent('vintage graphic tee under \$30', get_example_wardrobe()); print(s['parsed']); print(s['selected_item']['id'], s['selected_item']['title'])"
+{'description': 'vintage graphic tee', 'size': None, 'max_price': 30.0}
+lst_002 Y2K Baby Tee — Butterfly Print
+```
+
+**The three tools, tested one at a time** (Unit 3, before the Unit 4 search change)
 
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
@@ -159,197 +109,139 @@ Scored these vintage Levi's 501s on Depop for just $38 and I am never taking the
 
 ## How I Used AI
 
-<!-- Two specific moments. What you asked, what came back, what you changed.
-
-     "I used Claude to help me code" is not enough.
-
-     "I gave Claude my search_listings spec. It returned None on no match
-     instead of an empty list, so I changed it" is the level we want. -->
-
 **Moment 1**
 
-Asked: a Tool Inventory draft for the three tools. 
-Came back: it said create_fit_card returns an error string when the model fails. 
-Changed: after reading generate.py, which raises ModelUnavailable, I rewrote that line of the spec.
+- *What I asked for:* A Tool Inventory draft for the three tools.
+- *What came back:* It said `create_fit_card` returns an error string when the model fails.
+- *What I changed:* After reading `generate.py`, which raises `ModelUnavailable`, I rewrote that line of the spec.
 
 **Moment 2**
 
-Asked: an implementation of search_listings. 
-Came back: it worked, but description text counted toward the score, so a sweatshirt saying "No graphics" showed up for "graphic tee". 
-Changed: I noted it as a known limit in my README (or fixed it by dropping description from the match).
+- *What I asked for:* An implementation of `search_listings`.
+- *What came back:* It worked, but any single shared word scored, so a sweatshirt whose description says "No graphics" showed up for "graphic tee".
+- *What I changed:* I left it in Unit 3 and noted it. In Unit 4 I fixed it by requiring every query word to match.
 
-<!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
+**Moment 3 (Unit 4)**
 
-     Don't fill these in during unit 3.
-     ═══════════════════════════════════════════════════════════════════ -->
+- *What I asked for:* The MCP wiring and trace calls for `run_agent`.
+- *What came back:* A trace note comparing `item["id"]` to `session["selected_item"]["id"]`, but `item` is `selected_item`, so the comparison cannot fail.
+- *What I changed:* I kept it as evidence, but said in my diagnosis that criterion 3 was too easy to pass.
 
 ---
 
 ## Run Log — Before
 
-<!-- Five criteria, five tries each, in this exact format.
-
-     Five, because your criteria are written out of five. Mark each try PASS
-     or FAIL, count the passes, and read that count against your target — a
-     row targeting 4 of 5 with three PASS cells is MISSED (3/5).
-
-     `python run_eval.py --label before` runs everything and writes the table
-     into results/. Paste it here and fill in the verdicts. -->
+Run with `python run_eval.py --label before` (cache off, 5 tries per scenario). Results file: `results/run_2026-10-11_2209_before.md`.
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops before suggest_outfit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. selected_item id matches id passed on | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card shape (original wording: 3 sentences or fewer, names item, no "None") | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Empty wardrobe still gets outfit and card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Real output from one try**, pasted as text, naming the file and function
-that produced it:
+Real output from one try (produced by `agent.py::run_agent`, run via `run_eval.py`), criterion 1, try 1:
 
 ```
-
+[1] search_listings (via MCP)
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+[2] suggest_outfit
+      →    received item lst_002 (selected_item is lst_002)
+[3] create_fit_card
+      out: Scored this little butterfly print Y2K baby tee on Depop for just $18 and I'm so obsessed. It's giving total early 2000s mall rat energy, especially paired with baggy straight-leg jeans, chunky white sneakers, and an open black cropped zip hoodie.
 ```
 
 ---
 
 ## Verdicts and Diagnoses
 
-<!-- MET or MISSED per criterion against LAST UNIT's target, plus a sentence on
-     how you decided.
-
-     Then, for every miss: which of the four places it happened — a tool, the
-     loop's branch, the session, or the model's output — AND the mechanism.
-
-     Not a diagnosis:  "The fit card was bad."
-     A diagnosis:      "The fit card criterion missed on 2 of 5 items. Both had
-                        an empty brand field. My prompt puts the brand in the
-                        first sentence, so the card opened with a blank and read
-                        like a fragment. The tool worked; the prompt assumed a
-                        field that isn't always there."
-
-     Look for a pattern. Three misses on the same tool is one problem, not
-     three. -->
-
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+| 1 | Matching query completes | 4 of 5 | MET | 5 of 5 tries returned a fit card. |
+| 2 | Impossible query stops early | 5 of 5 | MET | 5 of 5 stopped at the branch; the trace had 2 steps and the message named price, size and description. |
+| 3 | Selected id matches id passed on | 5 of 5 | MET | The trace showed lst_004 = lst_004 in all 5 tries. |
+| 4 | Fit card shape | 4 of 5 | MET | I counted sentences in all 5 cards (2-3 each); each named the item and none contained "None". I scored the original wording. |
+| 5 | Empty wardrobe | 4 of 5 | MET | 5 of 5 returned general advice, a fit card and no error. |
 
 **Diagnoses**
 
+I missed nothing, so I checked whether my targets were too easy:
 
+- Criterion 3 could not fail. The trace compares `item["id"]` with `session["selected_item"]["id"]`, and `item` is `selected_item`. I would tighten it by recording the id inside `suggest_outfit`.
+- Criterion 4 checks form only, not accuracy. One card said "So ready for spring" in October. I would require price and platform to appear.
+- Criterion 1's 4-of-5 target was loose: parsing and MCP never failed in 5 tries.
+- The real weakness was the search tool (a tool-step problem): any single shared word scored, so "90s track jacket in size M" returned a silk slip dress and a leather bomber, and "denim jacket under $50" returned Levi's jeans. No criterion measured it. That is the step I improved.
 
 ---
 
 ## Loop Trace
 
-<!-- One full run, printed step by step, with the MCP call visible in it.
-
-     `python app.py ask '...' --trace` once you've added the trace.step()
-     calls in Milestone 2.
-
-     Worth pasting BOTH the happy path and the empty-search path. The empty
-     one should be visibly shorter, because it stops. If your two traces are
-     the same length, your branch isn't working — and this is the fastest way
-     anyone will ever find that out. -->
-
 **Happy path**
 
 ```
-
+$ python app.py ask 'vintage graphic tee under $30' --trace
+[1] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+[2] suggest_outfit
+      in:  dict with keys: item_id, wardrobe_items
+      out: **Outfit 1: Casual Y2K Streetwear** Pair the butterfly baby tee with the **baggy straight-leg jeans**, **chunk…
+      →    received item lst_002 (selected_item is lst_002)
+[3] create_fit_card
+      in:  dict with keys: item_id
+      out: Scored this literal holy grail butterfly baby tee on depop for only $18 and I am never taking it off. Thinking…
 ```
 
 **Empty search**
 
 ```
-
+$ python app.py ask 'designer ballgown size XXS under $5' --trace
+[1] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: [] (empty)
+[2] branch
+      →    empty search, stopping before suggest_outfit
 ```
 
-**On the MCP move:** <!-- what changed in your code, and whether anything
-behaved differently afterwards. If the rewire didn't work, say exactly where it
-broke — the error text and the last thing that worked. That earns the point in
-full. -->
+**Failure modes triggered on purpose**
 
+- Empty search: "No listings matched 'designer ballgown'. Try to raise the price limit above $5, or drop the size (XXS), or use fewer or broader description words."
+- Empty wardrobe (`--empty-wardrobe`, 'denim jacket under $50'): returned general styling advice and a fit card, no error.
+- Model unavailable (one character of the key changed, 'platform sneakers size 8'): "The model couldn't be reached, so no outfit or fit card was made. Check GEMINI_API_KEY in your .env file, or wait a minute if you've been running many queries, then try again."
 
+**On the MCP move:** I registered `search_listings` in `mcp_server.py` and replaced the direct call in `run_agent` with `mcp_client.call_tool`. The same list of listing dicts came back. The only problem was running outside `.venv`, which gave "No module named 'mcp'"; activating `.venv` fixed it.
 
 ---
 
 ## The Improvement
 
-<!-- What you changed, why your diagnosis pointed at it, and the after-run in
-     the same table format. One change, measured properly.
+**What I changed:** In `tools.py::search_listings`, the match rule went from "any one query word appears" (`score > 0`) to "every query word appears" (`query <= haystack`).
 
-     `python run_eval.py --label after` -->
+**Which failure it was meant to fix:** Loose search results at the tool step (a slip dress and a bomber for a track jacket query, Levi's jeans for a denim jacket query).
 
-**What I changed:**
-
-**Which failure it was meant to fix:**
+Result counts, before to after: graphic tee query 10 to 3, track jacket 4 to 1, denim jacket 7 to 1, ballgown 0 to 0. The top result was identical in every scenario.
 
 ### Run Log — After
 
+Run with `python run_eval.py --label after`. Results file: `results/run_2026-10-11_2220_after.md`.
+
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Matching query completes | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops early | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Selected id matches | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card shape | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Empty wardrobe | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Did it help, and how do I know:**
-
-<!-- If it made things worse, say that. Honestly reported, that earns full
-     credit and is more interesting than one that worked. -->
-
-
+**Did it help, and how do I know:** Yes for result quality: the irrelevant items disappeared (counts above). All five criteria were still MET after the change (criterion 4 scored on the original wording: 2-3 sentences each, item named, no "None"), so the improvement raised search precision without breaking the loop. The criteria did not change because they measure loop completion and state, not search quality. Tradeoff: stricter matching can return nothing for phrasing like "t-shirt" vs "tee".
 
 ---
 
 ## What's Still Broken
 
-<!-- For each criterion still missed: what you'd do, and why you stopped where
-     you did. "I ran out of time" is fine if it's true. Pretending nothing is
-     left is not. -->
-
-
-
-<!-- ═════════════════════════════════════════════════════════════════════
-
-     SUBMISSION CHECKLIST — unit 3
-
-       [ ] criteria.md has five numbered criteria, each with a target
-       [ ] Each criterion has a reason underneath it
-       [ ] All five unit 3 sections above have real content
-       [ ] Tool Inventory: all three tools, inputs WITH TYPES, a specific
-           return value, and the empty case
-       [ ] Planning Loop names the branch rule and agent.py::run_agent
-       [ ] Sample Run: one full query plus the three per-tool tests, as text
-       [ ] At least four new commits
-       [ ] Repository URL submitted — WRITE IT DOWN, you submit the same one
-           next unit
-
-     SUBMISSION CHECKLIST — unit 4
-
-       [ ] mcp_server.py exists with one tool registered
-           (or a written record of exactly where the rewire broke)
-       [ ] Run Log — Before, five criteria, five tries each
-       [ ] Real output pasted underneath, naming file and function
-       [ ] A verdict on every criterion
-       [ ] A diagnosis for every miss, naming a place AND a mechanism
-       [ ] Loop Trace, with the MCP call visible in it
-       [ ] All three failure modes triggered and handled
-       [ ] One improvement, with Run Log — After in the same format
-       [ ] What's Still Broken
-       [ ] At least four new commits
-       [ ] The SAME repository URL as last unit
-
-     Do not delete and recreate this repository. Your commit history is what
-     shows your criteria existed before your results did.
-     ═════════════════════════════════════════════════════════════════════ -->
-
----
-
-📖 **How to run this project: [RUNNING.md](RUNNING.md)**
+- Search is brittle on phrasing: there are no synonyms (tee/t-shirt), so a reasonable query can return nothing. Next I would fall back to any-word matching when all-words returns nothing, and say so.
+- Criterion 3 can't fail as written (the same object is compared to itself). I would record the id inside `suggest_outfit`.
+- Criterion 4 checks form, not accuracy, price or platform.
+- The agent always picks the first result and never asks.
+- I stopped at one improvement, which was the scope, and the deadline was tonight.
